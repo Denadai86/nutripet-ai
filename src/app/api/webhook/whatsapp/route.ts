@@ -5,9 +5,10 @@ import { db } from "@/lib/firebase";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
-// Credenciais da tua Evolution API (Coloca no .env da Vercel)
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "https://teu-app.railway.app";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "joao-nutripet-senha-super-segura-123";
+// Credenciais da tua Evolution API
+// Dica: Na Vercel, cadastre a variável SERVER_URL e EVOLUTION_API_KEY
+const EVOLUTION_API_URL = process.env.SERVER_URL || process.env.EVOLUTION_API_URL || "https://COLOQUE_AQUI_A_URL_DO_RAILWAY";
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "COLOQUE_AQUI_A_SUA_SENHA_DO_RAILWAY";
 
 // Função utilitária para enviar mensagem de volta via Evolution API
 async function enviarMensagemWhatsApp(instancia: string, numero: string, texto: string) {
@@ -37,24 +38,35 @@ export async function POST(req: Request) {
 
     const mensagemData = body.data;
     const instancia = body.instance; // Nome da instância conectada (ex: "NutriPetBot")
-    const remoteJid = mensagemData.key.remoteJid; // Número do cliente (ex: 5511999999999@s.whatsapp.net)
+    const remoteJid = mensagemData.key.remoteJid; // Número do cliente
     const isGroup = remoteJid.includes("@g.us");
     const isFromMe = mensagemData.key.fromMe;
 
-    // Ignora mensagens de grupos ou mensagens enviadas pelo próprio bot/loja
-    if (isGroup || isFromMe) {
-      return NextResponse.json({ status: "Ignorado" });
-    }
-
-    // Extrair o texto (o formato varia ligeiramente dependendo se é texto puro ou resposta a algo)
+    // 1. EXTRAI O TEXTO PRIMEIRO ANTES DOS BLOQUEIOS
     const messageContent = mensagemData.message;
     const text = messageContent?.conversation || messageContent?.extendedTextMessage?.text;
+
+    // 2. REGRAS DE BLOQUEIO E O HACK DE TESTE
+    if (isGroup) {
+      return NextResponse.json({ status: "Ignorado (Grupo)" });
+    }
+
+    // Se a mensagem for de você mesmo, SÓ aceita se você digitar exatamente "TESTE123"
+    // Se for de mim mesmo, SÓ aceita se a mensagem começar com a palavra "TESTE"
+    if (isFromMe && !text.toUpperCase().startsWith("TESTE")) {
+      return NextResponse.json({ status: "Ignorado (Minha própria mensagem)" });
+    }
+    
+    // Limpa a palavra "TESTE" para a IA achar que foi uma mensagem natural
+    const mensagemParaIA = text.toUpperCase().replace("TESTE", "").trim() || "Olá";
 
     if (!text) {
       return NextResponse.json({ status: "Sem texto para processar" });
     }
 
-    // --- 1. BUSCAR ESTOQUE NO FIREBASE (Reaproveitado da tua lógica) ---
+    console.log(`💬 Mensagem processada: ${text}`);
+
+    // --- 3. BUSCAR ESTOQUE NO FIREBASE ---
     const produtosRef = collection(db, "produtos");
     const produtosSnapshot = await getDocs(produtosRef);
     let catalogo = "Catálogo de Produtos em Estoque:\n";
@@ -66,7 +78,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // --- 2. CHAMAR O GEMINI ---
+    // --- 4. CHAMAR O GEMINI ---
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `Você é o assistente virtual de vendas pelo WhatsApp da agropecuária NutriPet.
     
@@ -78,12 +90,14 @@ export async function POST(req: Request) {
     2. Nunca venda mais do que o estoque disponível.
     3. Para fechar venda, use a tag secreta no final: [PEDIDO_FECHADO|NomeOuNumero|ID_Produto|Quantidade|ValorTotal]
     
-    Mensagem do cliente: "${text}"`;
 
+      Mensagem do cliente: "${mensagemParaIA}"`;
+
+      
     const result = await model.generateContent(prompt);
     let respostaIA = result.response.text();
 
-    // --- 3. PROCESSAR PEDIDO E BAIXA DE ESTOQUE ---
+    // --- 5. PROCESSAR PEDIDO E BAIXA DE ESTOQUE ---
     const regexPedido = /\[PEDIDO_FECHADO\|(.*?)\|(.*?)\|(.*?)\|(.*?)\]/;
     const match = respostaIA.match(regexPedido);
 
@@ -113,7 +127,7 @@ export async function POST(req: Request) {
       respostaIA += "\n\n✅ *Pedido registado!* Pode fazer a recolha na loja ou combinar a entrega.";
     }
 
-    // --- 4. ENVIAR RESPOSTA PARA O CLIENTE VIA WHATSAPP ---
+    // --- 6. ENVIAR RESPOSTA PARA O CLIENTE VIA WHATSAPP ---
     await enviarMensagemWhatsApp(instancia, remoteJid, respostaIA);
 
     return NextResponse.json({ success: true });
