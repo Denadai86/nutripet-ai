@@ -1,113 +1,106 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { collection, getDocs, addDoc, doc, updateDoc, increment } from "firebase/firestore"; 
+import { collection, getDocs, addDoc, doc, updateDoc, increment, setDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase"; 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
-// Credenciais da tua Evolution API
-// Dica: Na Vercel, cadastre a variável SERVER_URL e EVOLUTION_API_KEY
-const EVOLUTION_API_URL = process.env.SERVER_URL || process.env.EVOLUTION_API_URL || "https://COLOQUE_AQUI_A_URL_DO_RAILWAY";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "COLOQUE_AQUI_A_SUA_SENHA_DO_RAILWAY";
+const EVOLUTION_API_URL = "https://evolution-api-production-54d0a.up.railway.app";
+const EVOLUTION_API_KEY = "F7B68737-43D7-460F-BCEA-733A774A9AB0";
 
-// Função utilitária para enviar mensagem de volta via Evolution API
 async function enviarMensagemWhatsApp(instancia: string, numero: string, texto: string) {
+  const numeroLimpo = numero.replace("@s.whatsapp.net", "");
   const endpoint = `${EVOLUTION_API_URL}/message/sendText/${instancia}`;
   
-  await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': EVOLUTION_API_KEY
-    },
-    body: JSON.stringify({
-      number: numero,
-      text: texto
-    })
-  });
+  try {
+    await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY
+      },
+      body: JSON.stringify({ number: numeroLimpo, text: texto })
+    });
+  } catch (err) {
+    console.error("Erro envio WhatsApp:", err);
+  }
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // A Evolution API envia eventos de vários tipos. Queremos apenas novas mensagens.
     if (body.event !== "messages.upsert") {
-      return NextResponse.json({ status: "Ignorado - Evento não suportado" });
+      return NextResponse.json({ status: "Ignorado" });
     }
 
     const mensagemData = body.data;
-    const instancia = body.instance; // Nome da instância conectada (ex: "NutriPetBot")
-    const remoteJid = mensagemData.key.remoteJid; // Número do cliente
+    const instancia = body.instance; 
+    const remoteJid = mensagemData.key.remoteJid; 
     const isGroup = remoteJid.includes("@g.us");
     const isFromMe = mensagemData.key.fromMe;
 
-    // 1. EXTRAI O TEXTO PRIMEIRO ANTES DOS BLOQUEIOS
     const messageContent = mensagemData.message;
     const text = messageContent?.conversation || messageContent?.extendedTextMessage?.text;
 
-    // 2. REGRAS DE BLOQUEIO E O HACK DE TESTE
-    if (isGroup) {
-      return NextResponse.json({ status: "Ignorado (Grupo)" });
+    if (isGroup) return NextResponse.json({ status: "Ignorado (Grupo)" });
+    if (isFromMe && !text?.toUpperCase().startsWith("TESTE")) {
+      return NextResponse.json({ status: "Ignorado" });
     }
 
-    // Se a mensagem for de você mesmo, SÓ aceita se você digitar exatamente "TESTE123"
-    // Se for de mim mesmo, SÓ aceita se a mensagem começar com a palavra "TESTE"
-    if (isFromMe && !text.toUpperCase().startsWith("TESTE")) {
-      return NextResponse.json({ status: "Ignorado (Minha própria mensagem)" });
-    }
+    if (!text) return NextResponse.json({ status: "Sem texto" });
     
-    // Limpa a palavra "TESTE" para a IA achar que foi uma mensagem natural
     const mensagemParaIA = text.toUpperCase().replace("TESTE", "").trim() || "Olá";
+    const clienteNum = remoteJid.split('@')[0];
 
-    if (!text) {
-      return NextResponse.json({ status: "Sem texto para processar" });
-    }
-
-    console.log(`💬 Mensagem processada: ${text}`);
-
-    // --- 3. BUSCAR ESTOQUE NO FIREBASE ---
+    // --- 1. BUSCAR ESTOQUE ---
     const produtosRef = collection(db, "produtos");
     const produtosSnapshot = await getDocs(produtosRef);
-    let catalogo = "Catálogo de Produtos em Estoque:\n";
-    
+    let catalogo = "";
     produtosSnapshot.forEach((doc) => {
       const p = doc.data();
-      if (p.quantidade && p.quantidade > 0) {
-        catalogo += `- ID: ${doc.id} | ${p.nome}: R$ ${p.preco} (${p.quantidade} unid.)\n`;
-      }
+      if (p.quantidade > 0) catalogo += `- ID: ${doc.id} | ${p.nome}: R$ ${p.preco}\n`;
     });
 
-    // --- 4. CHAMAR O GEMINI ---
+    // --- 2. PROMPT DA IA COM ANALYTICS MIGRADO ---
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `Você é o assistente virtual de vendas pelo WhatsApp da agropecuária NutriPet.
+    const prompt = `Você é o atendente da NutriPet.
+    Estoque:\n${catalogo}
     
-    ESTOQUE ATUAL:
-    ${catalogo}
+    REGRAS DE RESPOSTA:
+    - Seja natural e curto.
+    - Se fechar venda, use a tag: [PEDIDO_FECHADO|Nome|ID_Produto|Qtd|Total]
     
-    REGRAS:
-    1. Responda de forma curta, natural, como se estivesse no WhatsApp. Use emojis com moderação.
-    2. Nunca venda mais do que o estoque disponível.
-    3. Para fechar venda, use a tag secreta no final: [PEDIDO_FECHADO|NomeOuNumero|ID_Produto|Quantidade|ValorTotal]
+    REGRA OBRIGATÓRIA DE BI/ANALYTICS:
+    No final da resposta, adicione SEMPRE uma segunda tag escondida classificando o tema atual da conversa em uma única palavra ou expressão curta (Ex: Ração, Vacinas, Banho, Reclamação, Dúvida Geral).
+    Formato: [TEMA|NomeDoTema]
     
+    Mensagem do cliente: "${mensagemParaIA}"`;
 
-      Mensagem do cliente: "${mensagemParaIA}"`;
-
-      
     const result = await model.generateContent(prompt);
     let respostaIA = result.response.text();
 
-    // --- 5. PROCESSAR PEDIDO E BAIXA DE ESTOQUE ---
+    // --- 3. PARSE DA CLASSIFICAÇÃO DE TEMA ---
+    const regexTema = /\[TEMA\|(.*?)\]/;
+    const matchTema = respostaIA.match(regexTema);
+    let temaIdentificado = "Atendimento Geral";
+    if (matchTema) {
+      temaIdentificado = matchTema[1].trim();
+      respostaIA = respostaIA.replace(regexTema, "").trim(); // Remove da mensagem final
+    }
+
+    let statusConversa = "Interagindo";
+
+    // --- 4. DETECÇÃO DE PEDIDO FECHADO ---
     const regexPedido = /\[PEDIDO_FECHADO\|(.*?)\|(.*?)\|(.*?)\|(.*?)\]/;
-    const match = respostaIA.match(regexPedido);
+    const matchPedido = respostaIA.match(regexPedido);
 
-    if (match) {
-      const clienteNum = remoteJid.split('@')[0]; // Extrai só os números
-      const idProduto = match[2].trim();
-      const qtdComprada = parseInt(match[3].trim()) || 1;
-      const valorTotal = parseFloat(match[4].trim().replace(',', '.')) || 0;
+    if (matchPedido) {
+      statusConversa = "Pedido Fechado";
+      const idProduto = matchPedido[2].trim();
+      const qtdComprada = parseInt(matchPedido[3].trim()) || 1;
+      const valorTotal = parseFloat(matchPedido[4].trim().replace(',', '.')) || 0;
 
-      // Grava Pedido
       await addDoc(collection(db, "pedidos"), {
         cliente: clienteNum,
         itens: `${qtdComprada}x (${idProduto})`,
@@ -116,23 +109,31 @@ export async function POST(req: Request) {
         data: new Date()
       });
 
-      // Baixa no Estoque
-      const produtoRef = doc(db, "produtos", idProduto);
-      await updateDoc(produtoRef, {
+      await updateDoc(doc(db, "produtos", idProduto), {
         quantidade: increment(-qtdComprada)
       });
 
-      // Limpa a tag da mensagem
       respostaIA = respostaIA.replace(regexPedido, "").trim();
-      respostaIA += "\n\n✅ *Pedido registado!* Pode fazer a recolha na loja ou combinar a entrega.";
+      respostaIA += "\n\n✅ *Pedido registado!*";
     }
 
-    // --- 6. ENVIAR RESPOSTA PARA O CLIENTE VIA WHATSAPP ---
+    // --- 5. SALVAR HISTÓRICO DA CONVERSA PARA O PAINEL ---
+    const conversaRef = doc(db, "conversas", clienteNum);
+    await setDoc(conversaRef, {
+      cliente: clienteNum,
+      ultimaMensagem: mensagemParaIA,
+      respostaBot: respostaIA,
+      tema: temaIdentificado,
+      status: statusConversa,
+      updatedAt: new Date()
+    }, { merge: true });
+
+    // --- 6. ENVIAR WHATSAPP ---
     await enviarMensagemWhatsApp(instancia, remoteJid, respostaIA);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Erro no Webhook:", error);
+    console.error("Erro fatal Webhook:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

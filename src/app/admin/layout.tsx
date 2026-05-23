@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { LayoutDashboard, Package, ShoppingCart, Calendar, LogOut, Bot } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Calendar, LogOut, Bot, Box } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -34,6 +34,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl bg-slate-800 text-white">
               <LayoutDashboard size={18} className="text-emerald-400" />
               Dashboard
+            </Link>
+            <Link href="/admin/produtos" className="flex items-center gap-2 text-slate-300 hover:text-white p-2">
+              <Box size={20} />
+              Catálogo
             </Link>
             <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl hover:bg-slate-800 hover:text-white text-slate-400">
               <ShoppingCart size={18} /> Pedidos da IA
