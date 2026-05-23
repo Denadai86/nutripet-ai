@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { LayoutDashboard, Package, ShoppingCart, Calendar, LogOut, Bot, Box } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Calendar, LogOut, Bot, Box, } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import {FaDog} from "react-icons/fa";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -39,6 +40,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Box size={20} />
               Catálogo
             </Link>
+            <Link href="/admin/pets" className="flex items-center gap-2 text-slate-300 hover:text-white p-2">
+              <FaDog size={20} />
+              Pets
+            </Link>
+            
             <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl hover:bg-slate-800 hover:text-white text-slate-400">
               <ShoppingCart size={18} /> Pedidos da IA
             </button>
