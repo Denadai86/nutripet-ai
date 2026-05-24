@@ -1,64 +1,70 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { PawPrint, Trash2, HeartPulse, User } from "lucide-react";
+import { PawPrint, Trash2, HeartPulse, UserCircle } from "lucide-react";
 
 interface Pet {
   id: string;
-  nome: string;
-  especie: string;
   telefoneDono: string;
+  nome: string;
+  idade: string;
+  peso: string;
+  especie: string;
+  raca: string;
+  cor: string;
   observacoes: string;
 }
 
-export default function PetsPage() {
+export default function CRMPage() {
   const [pets, setPets] = useState<Pet[]>([]);
-  const [nome, setNome] = useState("");
-  const [especie, setEspecie] = useState("Cachorro");
-  const [telefoneDono, setTelefoneDono] = useState("");
-  const [observacoes, setObservacoes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Dados do Cliente
+  const [cliente, setCliente] = useState({ nome: "", idade: "", endereco: "", telefone: "", observacoes: "" });
+  // Dados do Pet
+  const [pet, setPet] = useState({ nome: "", idade: "", peso: "", especie: "Cachorro", raca: "", cor: "", observacoes: "" });
+
   useEffect(() => {
-    const q = collection(db, "pets");
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, "pets"), (snapshot) => {
       const list: Pet[] = [];
-      snapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Pet);
-      });
+      snapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() } as Pet));
       setPets(list);
     });
     return () => unsubscribe();
   }, []);
 
-  const handleAddPet = async (e: React.FormEvent) => {
+  const handleClienteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setCliente({ ...cliente, [e.target.name]: e.target.value });
+  const handlePetChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setPet({ ...pet, [e.target.name]: e.target.value });
+
+  const handleSaveCRM = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome || !telefoneDono) return;
+    if (!cliente.telefone || !pet.nome) return;
 
     setIsSubmitting(true);
     try {
-      // Limpa o telefone para cruzar perfeitamente com a Evolution API
-      let telefoneLimpo = telefoneDono.replace(/\D/g, "");
-      // Se a pessoa digitou só o DDD e o número (ex: 11999999999), injeta o 55 do Brasil
-      if (telefoneLimpo.length === 10 || telefoneLimpo.length === 11) {
-        telefoneLimpo = "55" + telefoneLimpo;
-      }
+      let telLimpo = cliente.telefone.replace(/\D/g, "");
+      if (telLimpo.length === 10 || telLimpo.length === 11) telLimpo = "55" + telLimpo;
 
+      // 1. Salva/Atualiza Cliente (Upsert usando o Telefone como ID principal)
+      await setDoc(doc(db, "clientes", telLimpo), {
+        ...cliente,
+        telefoneLimpo: telLimpo,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 2. Adiciona o Pet vinculado ao telefone do Cliente
       await addDoc(collection(db, "pets"), {
-        nome: nome.trim(),
-        especie,
-        telefoneDono: telefoneLimpo,
-        observacoes: observacoes.trim(),
+        ...pet,
+        telefoneDono: telLimpo,
         createdAt: new Date(),
       });
       
-      setNome("");
-      setTelefoneDono("");
-      setObservacoes("");
+      setPet({ nome: "", idade: "", peso: "", especie: "Cachorro", raca: "", cor: "", observacoes: "" });
+      alert("Paciente e Tutor salvos com sucesso!");
     } catch (error) {
-      console.error("Erro ao cadastrar pet:", error);
+      console.error("Erro no CRM:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,111 +76,134 @@ export default function PetsPage() {
         
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-            <PawPrint className="text-emerald-400" /> Prontuário CRM
+            <PawPrint className="text-emerald-400" /> CRM Veterinário
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Cadastre os Pets vinculados ao WhatsApp do cliente. A IA usará isso para hiper-personalizar o atendimento.
-          </p>
+          <p className="text-slate-400 text-sm mt-1">Cadastro unificado de Tutores e Pacientes.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Cadastro */}
-          <div className="lg:col-span-1 bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <HeartPulse size={20} className="text-pink-400" /> Novo Paciente
-            </h2>
-            
-            <form onSubmit={handleAddPet} className="space-y-4">
+          {/* Formulário Unificado */}
+          <div className="lg:col-span-5 space-y-6">
+            <form onSubmit={handleSaveCRM} className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6">
+              
+              {/* Sessão Tutor */}
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Nome do Pet</label>
-                <input
-                  type="text" required value={nome} onChange={(e) => setNome(e.target.value)}
-                  placeholder="Ex: Bolinha"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1">Espécie</label>
-                  <select
-                    value={especie} onChange={(e) => setEspecie(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    <option>Cachorro</option>
-                    <option>Gato</option>
-                    <option>Ave</option>
-                    <option>Roedor</option>
-                    <option>Outro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1">WhatsApp do Dono</label>
-                  <input
-                    type="text" required value={telefoneDono} onChange={(e) => setTelefoneDono(e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
-                  />
+                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-700 pb-2">
+                  <UserCircle size={18} className="text-blue-400" /> Dados do Tutor
+                </h2>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">WhatsApp *</label>
+                      <input name="telefone" required value={cliente.telefone} onChange={handleClienteChange} placeholder="11999999999" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Nome</label>
+                      <input name="nome" value={cliente.nome} onChange={handleClienteChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Endereço (Entrega)</label>
+                    <input name="endereco" value={cliente.endereco} onChange={handleClienteChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Idade Cliente</label>
+                      <input name="idade" value={cliente.idade} onChange={handleClienteChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Obs. do Tutor</label>
+                      <input name="observacoes" placeholder="Ex: Cliente VIP, prefere Pix" value={cliente.observacoes} onChange={handleClienteChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Sessão Pet */}
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Histórico / Dietas (Para a IA ler)</label>
-                <textarea
-                  value={observacoes} onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Ex: Alérgico a frango, toma vacina V10 mês que vem."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500 h-24"
-                />
+                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-700 pb-2">
+                  <HeartPulse size={18} className="text-pink-400" /> Dados do Pet
+                </h2>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Nome do Pet *</label>
+                      <input name="nome" required value={pet.nome} onChange={handlePetChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Espécie</label>
+                      <select name="especie" value={pet.especie} onChange={handlePetChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+                        <option>Cachorro</option><option>Gato</option><option>Ave</option><option>Roedor</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Raça</label>
+                      <input name="raca" value={pet.raca} onChange={handlePetChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Idade</label>
+                      <input name="idade" value={pet.idade} onChange={handlePetChange} placeholder="Ex: 2 anos" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Peso</label>
+                      <input name="peso" value={pet.peso} onChange={handlePetChange} placeholder="Ex: 5kg" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Cor</label>
+                    <input name="cor" value={pet.cor} onChange={handlePetChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Histórico Clínico / Dieta</label>
+                    <textarea name="observacoes" value={pet.observacoes} onChange={handlePetChange} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white h-20" />
+                  </div>
+                </div>
               </div>
 
-              <button
-                type="submit" disabled={isSubmitting}
-                className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-lg transition-colors mt-4"
-              >
-                Cadastrar Pet
+              <button type="submit" disabled={isSubmitting} className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-lg transition-colors">
+                Salvar Cadastro Unificado
               </button>
             </form>
           </div>
 
-          {/* Lista de Pets */}
-          <div className="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          {/* Tabela Resumo */}
+          <div className="lg:col-span-7 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden h-fit">
              <div className="p-4 border-b border-slate-700 bg-slate-800/50">
-              <h2 className="text-lg font-bold text-white">Pacientes Cadastrados ({pets.length})</h2>
+              <h2 className="text-lg font-bold text-white">Pacientes na Base ({pets.length})</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-900/50 text-slate-400 text-sm">
-                    <th className="p-4 font-medium">Pet & Espécie</th>
-                    <th className="p-4 font-medium">Tutor (WhatsApp)</th>
-                    <th className="p-4 font-medium">Observações Clínicas</th>
+                  <tr className="bg-slate-900/50 text-slate-400 text-xs">
+                    <th className="p-4 font-medium">Pet & Ficha</th>
+                    <th className="p-4 font-medium">Contato (Tutor)</th>
                     <th className="p-4 font-medium text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {pets.length === 0 ? (
-                    <tr><td colSpan={4} className="p-8 text-center text-slate-500">Nenhum pet cadastrado.</td></tr>
-                  ) : (
-                    pets.map((pet) => (
-                      <tr key={pet.id} className="hover:bg-slate-700/30">
-                        <td className="p-4 font-bold text-emerald-400">
-                          {pet.nome} <span className="text-xs font-normal text-slate-400 block">{pet.especie}</span>
-                        </td>
-                        <td className="p-4 text-slate-300 font-mono text-sm flex items-center gap-2">
-                          <User size={14} className="text-slate-500"/> +{pet.telefoneDono}
-                        </td>
-                        <td className="p-4 text-xs text-slate-400 max-w-50 truncate" title={pet.observacoes}>
-                          {pet.observacoes || "-"}
-                        </td>
-                        <td className="p-4 text-center">
-                          <button onClick={() => deleteDoc(doc(db, "pets", pet.id))} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                <tbody className="divide-y divide-slate-700 text-sm">
+                  {pets.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-700/30">
+                      <td className="p-4">
+                        <p className="font-bold text-emerald-400">{p.nome} <span className="text-xs text-slate-400 font-normal ml-1">({p.especie} {p.raca && `- ${p.raca}`})</span></p>
+                        <p className="text-xs text-slate-400 mt-1">Peso: {p.peso || "-"} | Idade: {p.idade || "-"}</p>
+                        {p.observacoes && <p className="text-xs text-slate-500 mt-1 italic">"{p.observacoes}"</p>}
+                      </td>
+                      <td className="p-4 text-slate-300 font-mono text-xs">
+                        +{p.telefoneDono}
+                      </td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => deleteDoc(doc(db, "pets", p.id))} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
