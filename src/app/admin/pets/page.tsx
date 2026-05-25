@@ -7,7 +7,8 @@ import { PawPrint, Trash2, HeartPulse, UserCircle } from "lucide-react";
 
 interface Pet {
   id: string;
-  telefoneDono: string;
+  telefonesDonos?: string[];
+  telefoneDono?: string; // Campo legado, pode ser removido no futuro
   nome: string;
   idade: string;
   peso: string;
@@ -57,7 +58,7 @@ export default function CRMPage() {
       // 2. Adiciona o Pet vinculado ao telefone do Cliente
       await addDoc(collection(db, "pets"), {
         ...pet,
-        telefoneDono: telLimpo,
+        telefoneDonos: [telLimpo], // Vincula o pet ao telefone do tutor},
         createdAt: new Date(),
       });
       
@@ -194,8 +195,12 @@ export default function CRMPage() {
                         <p className="text-xs text-slate-400 mt-1">Peso: {p.peso || "-"} | Idade: {p.idade || "-"}</p>
                         {p.observacoes && <p className="text-xs text-slate-500 mt-1 italic">"{p.observacoes}"</p>}
                       </td>
-                      <td className="p-4 text-slate-300 font-mono text-xs">
-                        +{p.telefoneDono}
+                      <td className="p-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
+                        {Array.isArray(p.telefonesDonos) && p.telefonesDonos.length > 0 
+                          ? `+${p.telefonesDonos[0]}` 
+                          : p.telefoneDono 
+                            ? `+${p.telefoneDono}` 
+                            : "Sem telefone"}
                       </td>
                       <td className="p-4 text-center">
                         <button onClick={() => deleteDoc(doc(db, "pets", p.id))} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">

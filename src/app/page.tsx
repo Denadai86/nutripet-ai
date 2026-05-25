@@ -2,88 +2,216 @@
 "use client";
 
 import Link from "next/link";
-import { Bot, Package, Clock, ShieldCheck, ArrowRight, Zap, MessageSquare, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-900 font-sans text-slate-100 selection:bg-emerald-500 selection:text-slate-900">
-      
-      {/* HEADER CORPOATIVO */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Bot className="text-emerald-400 animate-pulse" size={28} />
-            <span className="text-xl font-bold tracking-tight text-white">NutriPet<span className="text-emerald-400">.AI</span></span>
+    <main className="min-h-screen font-sans" style={{ background: "#F7F2E8", color: "#2B1A08" }}>
+
+      {/* NAV */}
+      <header className="sticky top-0 z-50" style={{ background: "#F7F2E8", borderBottom: "1px solid #E5DDD0" }}>
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="NutriPet AI" className="h-8 w-auto" />
+            <span className="font-serif text-lg font-bold tracking-tight" style={{ color: "#2B1A08" }}>
+              NutriPet<span style={{ color: "#1565C0" }}>-AI</span>
+            </span>
           </div>
-          <Link 
-            href="/loja" 
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-5 py-2 rounded-full font-semibold transition-all shadow-lg shadow-emerald-500/20 text-sm flex items-center gap-1 group"
+          <nav className="hidden md:flex items-center gap-8">
+            {["Como funciona", "Planos"].map((l) => (
+              <span key={l} className="text-sm cursor-pointer transition-colors" style={{ color: "#6B5744" }}>
+                {l}
+              </span>
+            ))}
+            <Link href="/admin" className="text-sm cursor-pointer transition-colors" style={{ color: "#6B5744" }}>
+              Admin
+            </Link>
+          </nav>
+          <Link
+            href="/loja"
+            className="text-sm font-medium px-4 py-2 rounded-md flex items-center gap-1.5 group transition-opacity hover:opacity-80"
+            style={{ background: "#1565C0", color: "#fff" }}
           >
-            Ver Demo Ao Vivo <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            Ver demonstração
+            <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <section className="max-w-5xl mx-auto px-4 pt-24 pb-16 text-center space-y-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
-          <Zap size={12}/> Nova Era do Comércio Conversacional
-        </div>
-        
-        <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-none">
-          O primeiro assistente de IA que <br/>
-          <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            vende e gerencia o seu Pet Shop.
-          </span>
-        </h1>
-        
-        <p className="text-base md:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-          Transforme o WhatsApp da sua agropecuária ou clínica veterinária em uma máquina de vendas automática. A IA consulta o estoque real, verifica restrições médicas e fecha pedidos 24/7.
-        </p>
-        
-        <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-          <Link 
-            href="/loja" 
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-8 py-4 rounded-xl font-bold transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 text-base group"
-          >
-            Entrar na Loja de Teste <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
-          <Link 
-            href="/admin" 
-            className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-8 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-base"
-          >
-            Painel Admin Gerencial
-          </Link>
+      {/* HERO */}
+      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16">
+        <div className="max-w-xl">
+          <p className="text-xs font-semibold tracking-[.14em] uppercase mb-6" style={{ color: "#1565C0" }}>
+            Casa de ração · Vet · Agro
+          </p>
+          <h1 className="font-serif text-5xl font-bold leading-[1.06] tracking-tight mb-6" style={{ color: "#2B1A08" }}>
+            Seu WhatsApp vende<br />
+            enquanto você{" "}
+            <em className="not-italic" style={{ color: "#1565C0" }}>dorme.</em>
+          </h1>
+          <p className="text-base leading-relaxed mb-10" style={{ color: "#6B5744", maxWidth: "420px" }}>
+            Uma IA treinada para o varejo pet que responde clientes, consulta estoque e fecha pedidos — sem você precisar estar online.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/loja"
+              className="text-sm font-semibold px-6 py-3 rounded-md flex items-center gap-2 group transition-opacity hover:opacity-85"
+              style={{ background: "#2B1A08", color: "#F7F2E8" }}
+            >
+              Entrar na loja de teste
+              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+            <Link
+              href="/admin"
+              className="text-sm font-medium px-6 py-3 rounded-md transition-colors hover:opacity-80"
+              style={{ border: "1px solid #C5B9A8", color: "#2B1A08", background: "transparent" }}
+            >
+              Painel admin
+            </Link>
+            <span className="text-xs pl-1" style={{ color: "#A89880" }}>Sem cartão de crédito</span>
+          </div>
         </div>
       </section>
 
-      {/* CARDS DE BENEFÍCIOS */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700/60 hover:border-slate-600 transition-all space-y-4">
-            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 w-fit"><Clock size={24}/></div>
-            <h3 className="text-xl font-bold text-white">Automação de Atendimento 24/7</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">Nunca mais perca um orçamento de madrugada. O robô responde instantaneamente com simpatia e foco em conversão de vendas.</p>
+      {/* STATS */}
+      <div style={{ borderTop: "1px solid #E5DDD0", borderBottom: "1px solid #E5DDD0" }}>
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-3">
+          {[
+            { num: "24/7", label: "Atendimento sem parar" },
+            { num: "< 3s", label: "Tempo médio de resposta" },
+            { num: "0 código", label: "Para configurar e usar" },
+          ].map((s, i) => (
+            <div
+              key={s.num}
+              className="py-8"
+              style={{
+                paddingLeft: i > 0 ? "2rem" : "0",
+                paddingRight: i < 2 ? "2rem" : "0",
+                borderLeft: i > 0 ? "1px solid #E5DDD0" : "none",
+              }}
+            >
+              <div className="font-serif text-3xl font-bold tracking-tight" style={{ color: "#2B1A08" }}>{s.num}</div>
+              <div className="text-xs mt-1.5" style={{ color: "#A89880" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FEATURES */}
+      <section style={{ background: "#EFE9DB" }}>
+        <div className="max-w-5xl mx-auto px-6 py-16">
+          <p className="text-xs font-semibold tracking-[.14em] uppercase mb-10" style={{ color: "#A89880" }}>
+            O que a IA faz por você
+          </p>
+          <div>
+            {[
+              {
+                n: "01",
+                title: "Consulta o estoque em tempo real",
+                desc: "Nunca mais prometa um produto que acabou. A IA lê o inventário antes de confirmar qualquer pedido e dá baixa automática assim que a venda fecha.",
+              },
+              {
+                n: "02",
+                title: "Lembra quem é cada pet",
+                desc: "A IA conhece o nome, a raça, o peso e as restrições de saúde de cada animal antes de recomendar qualquer ração ou remédio — direto pelo histórico do cliente.",
+              },
+              {
+                n: "03",
+                title: "Fecha pedidos e registra tudo",
+                desc: "Do orçamento à confirmação, tudo aparece no painel em tempo real: faturamento, taxa de conversão e os temas mais perguntados pelos seus clientes.",
+              },
+            ].map((f, i) => (
+              <div
+                key={f.n}
+                className="flex gap-8 py-8"
+                style={{ borderTop: i > 0 ? "1px solid #DDD6C8" : "1px solid #DDD6C8" }}
+              >
+                <span className="font-serif text-sm pt-1 w-6 shrink-0" style={{ color: "#C5B9A8" }}>{f.n}</span>
+                <div>
+                  <h3 className="font-serif text-xl font-bold mb-2" style={{ color: "#2B1A08" }}>{f.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "#6B5744", maxWidth: "480px" }}>{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CHAT DEMO */}
+      <section className="max-w-5xl mx-auto px-6 py-16">
+        <div className="grid md:grid-cols-2 gap-12 items-start">
+
+          <div className="pt-4">
+            <p className="text-xs font-semibold tracking-[.14em] uppercase mb-6" style={{ color: "#A89880" }}>
+              Uma conversa real no WhatsApp
+            </p>
+            <h2 className="font-serif text-3xl font-bold leading-snug mb-6" style={{ color: "#2B1A08" }}>
+              Inteligência que o<br />dono de pet shop<br />sente na prática.
+            </h2>
+            <ul className="space-y-3">
+              {[
+                "Reconhece o cliente pelo número",
+                "Cruza histórico de saúde do pet",
+                "Sugere produtos compatíveis",
+                "Confirma pedidos sem intervenção humana",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: "#6B5744" }}>
+                  <Check size={14} className="mt-0.5 shrink-0" style={{ color: "#1565C0" }} />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700/60 hover:border-slate-600 transition-all space-y-4">
-            <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400 w-fit"><Package size={24}/></div>
-            <h3 className="text-xl font-bold text-white">Estoque Sincronizado (NoSQL)</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">Chega de prometer produtos que acabaram. A IA lê o inventário em tempo real e dá baixa automática no banco de dados assim que a venda fecha.</p>
-          </div>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5DDD0", background: "#fff", boxShadow: "0 1px 4px rgba(43,26,8,.06)" }}>
+            <div className="px-4 py-3 flex items-center gap-3" style={{ background: "#2B1A08" }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: "#1565C0", color: "#fff" }}>NP</div>
+              <div>
+                <div className="text-xs font-medium" style={{ color: "#F7F2E8" }}>NutriPet Assistente</div>
+                <div className="text-[10px] flex items-center gap-1" style={{ color: "#A89880" }}>
+                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#4A7C3F" }} />
+                  online agora
+                </div>
+              </div>
+            </div>
 
-          <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700/60 hover:border-slate-600 transition-all space-y-4">
-            <div className="p-3 bg-pink-500/10 rounded-xl text-pink-400 w-fit"><ShieldCheck size={24}/></div>
-            <h3 className="text-xl font-bold text-white">CRM & Prontuário Médico</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">Atendimento inteligente. O robô reconhece o pet pelo nome, sabe a idade, o peso e impede a venda de rações ou remédios com restrições de saúde.</p>
+            <div className="p-4 flex flex-col gap-3" style={{ background: "#EFE9DB", minHeight: "220px" }}>
+              <div className="self-end text-xs rounded-xl rounded-br-sm px-3 py-2 leading-relaxed" style={{ background: "#2B1A08", color: "#F7F2E8", maxWidth: "80%" }}>
+                Oi! Tem ração Hills Prescription para gato com doença renal?
+              </div>
+              <div className="self-start text-xs rounded-xl rounded-bl-sm px-3 py-2 leading-relaxed" style={{ background: "#fff", color: "#2B1A08", border: "1px solid #E5DDD0", maxWidth: "80%" }}>
+                Tenho sim — Hills k/d Felina 1,8kg está disponível (3 un.) por <strong>R$ 98,90</strong>. Posso reservar?
+              </div>
+              <div className="self-end text-xs rounded-xl rounded-br-sm px-3 py-2 leading-relaxed" style={{ background: "#2B1A08", color: "#F7F2E8", maxWidth: "80%" }}>
+                Perfeito, é para o Bolinha — insuficiência renal crônica
+              </div>
+              <div className="self-start text-xs rounded-xl rounded-bl-sm px-3 py-2 leading-relaxed" style={{ background: "#fff", color: "#2B1A08", border: "1px solid #E5DDD0", maxWidth: "80%" }}>
+                Anotado na ficha do Bolinha 🐱 Registro uso contínuo da k/d. Aviso quando o estoque baixar?
+              </div>
+            </div>
+
+            <div className="px-4 py-2.5 text-[10px]" style={{ borderTop: "1px solid #E5DDD0", background: "#fff", color: "#C5B9A8" }}>
+              Resposta automática · sem intervenção humana · 2,4s
+            </div>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-800 bg-slate-950 py-8 text-center text-xs text-slate-500">
-        <p>&copy; {new Date().getFullYear()} NutriPet AI. Todos os direitos reservados. Built for local business scale.</p>
+      <footer style={{ borderTop: "1px solid #E5DDD0", background: "#EFE9DB" }}>
+        <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="NutriPet AI" className="h-6 w-auto" />
+            <span className="font-serif text-sm font-bold" style={{ color: "#2B1A08" }}>
+              NutriPet<span style={{ color: "#1565C0" }}>-AI</span>
+            </span>
+          </div>
+          <p className="text-xs" style={{ color: "#A89880" }}>
+            &copy; {new Date().getFullYear()} NutriPet AI · Casa de Ração | Vet | Agro
+          </p>
+        </div>
       </footer>
+
     </main>
   );
 }

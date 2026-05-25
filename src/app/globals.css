@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
+/* 1. ESTA LINHA ENSINA O TAILWIND V4 A OBEDECER AO NOSSO BOTÃO (.dark) */
+@custom-variant dark (&:is(.dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* 2. SUBSTITUÍMOS O @media POR UMA CLASSE .dark QUE NÓS CONTROLAMOS */
+.dark {
+  --background: #0f172a; /* Tom escuro slate elegante */
+  --foreground: #f8fafc;
 }
 
 @theme inline {
@@ -12,15 +21,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Transição suave para quando o corpo do site mudar de cor */
+  transition: background-color 0.3s ease, color 0.3s ease; 
 }

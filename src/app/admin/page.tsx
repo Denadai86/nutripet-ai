@@ -1,197 +1,142 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { MessageSquare, ShoppingBag, BarChart3, TrendingUp, AlertCircle } from "lucide-react";
+import { DollarSign, MessageCircle, ShoppingBag, PawPrint, TrendingUp, Activity, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
-interface Pedido {
-  id: string;
-  cliente: string;
-  itens: string;
-  total: number;
-  status: string;
-}
-
-interface Conversa {
-  id: string;
-  cliente: string;
-  ultimaMensagem: string;
-  respostaBot: string;
-  tema: string;
-  status: string;
-  updatedAt: any;
-}
-
-export default function AdminDashboard() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [conversas, setConversas] = useState<Conversa[]>([]);
+export default function DashboardPage() {
+  const [stats, setStats] = useState({ faturacao: 0, totalPedidos: 0, totalConversas: 0, totalPets: 0 });
+  const [ultimosPedidos, setUltimosPedidos] = useState<any[]>([]);
+  const [ultimasConversas, setUltimasConversas] = useState<any[]>([]);
 
   useEffect(() => {
-    // Escuta Pedidos em Tempo Real
     const qPedidos = query(collection(db, "pedidos"), orderBy("data", "desc"));
-    const unsubscribePedidos = onSnapshot(qPedidos, (snapshot) => {
-      const list: Pedido[] = [];
+    const unsubPedidos = onSnapshot(qPedidos, (snapshot) => {
+      let fat = 0;
+      const pedidosList: any[] = [];
       snapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Pedido);
+        fat += doc.data().total || 0;
+        pedidosList.push({ id: doc.id, ...doc.data() });
       });
-      setPedidos(list);
+      setStats((s) => ({ ...s, faturacao: fat, totalPedidos: snapshot.size }));
+      setUltimosPedidos(pedidosList.slice(0, 3));
     });
 
-    // Escuta Linha do Tempo das Conversas da IA em Tempo Real
-    const qConversas = query(collection(db, "conversas"), orderBy("updatedAt", "desc"));
-    const unsubscribeConversas = onSnapshot(qConversas, (snapshot) => {
-      const list: Conversa[] = [];
-      snapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Conversa);
-      });
-      setConversas(list);
+    const qConversas = query(collection(db, "conversas"), orderBy("updatedAt", "desc"), limit(3));
+    const unsubConversas = onSnapshot(qConversas, (snapshot) => {
+      const conversasList: any[] = [];
+      snapshot.forEach((doc) => conversasList.push({ id: doc.id, ...doc.data() }));
+      setStats((s) => ({ ...s, totalConversas: snapshot.size })); 
+      setUltimasConversas(conversasList);
     });
 
-    return () => {
-      unsubscribePedidos();
-      unsubscribeConversas();
-    };
+    const unsubPets = onSnapshot(collection(db, "pets"), (snapshot) => {
+      setStats((s) => ({ ...s, totalPets: snapshot.size }));
+    });
+
+    return () => { unsubPedidos(); unsubConversas(); unsubPets(); };
   }, []);
 
-  // Cálculos de Métrica / BI
-  const totalFaturamento = pedidos.reduce((acc, curr) => acc + (curr.total || 0), 0);
-  const conversasConvertidas = conversas.filter((c) => c.status === "Pedido Fechado").length;
-  const taxaConversao = conversas.length > 0 ? ((conversasConvertidas / conversas.length) * 100).toFixed(1) : "0";
-
-  // Agrupamento de Temas mais comentados
-  const contagemTemas: { [key: string]: number } = {};
-  conversas.forEach((c) => {
-    if (c.tema) contagemTemas[c.tema] = (contagemTemas[c.tema] || 0) + 1;
-  });
-
   return (
-    <div className="p-6 bg-slate-900 min-h-screen text-slate-100">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 transition-colors">
+          <Activity className="text-emerald-500" /> Visão Geral da IA
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1 transition-colors">Monitorização em tempo real do desempenho do seu assistente NutriPet.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between overflow-hidden transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Faturação IA</p>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white"><span className="text-lg text-slate-400 mr-1">R$</span>{stats.faturacao.toFixed(2)}</h3>
+            </div>
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl"><DollarSign size={24} /></div>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <TrendingUp size={14} /> <span>100% Automático</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Vendas Fechadas</p>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalPedidos}</h3>
+            </div>
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl"><ShoppingBag size={24} /></div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Conversas Recentes</p>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalConversas}</h3>
+            </div>
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl"><MessageCircle size={24} /></div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Pacientes (CRM)</p>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalPets}</h3>
+            </div>
+            <div className="p-3 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-xl"><PawPrint size={24} /></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-            <BarChart3 className="text-emerald-400" /> NutriPet AI Intelligence
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Monitoramento em tempo real das ações, conversões e inteligência do robô.
-          </p>
-        </div>
-
-        {/* Painel de Métricas Rápidas (BI) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase">Faturamento WhatsApp</p>
-              <h3 className="text-2xl font-bold text-white mt-1">R$ {totalFaturamento.toFixed(2)}</h3>
-            </div>
-            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><ShoppingBag /></div>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden transition-colors">
+          <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+            <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><MessageCircle size={18} className="text-indigo-500"/> Últimas Interações</h2>
+            <Link href="/admin/conversas" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors">
+              Ver Radar Completo <ArrowRight size={14}/>
+            </Link>
           </div>
-
-          <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase">Contatos Totais</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{conversas.length}</h3>
-            </div>
-            <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><MessageSquare /></div>
-          </div>
-
-          <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase">Vendas pela IA</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{conversasConvertidas}</h3>
-            </div>
-            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400"><TrendingUp /></div>
-          </div>
-
-          <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase">Taxa de Conversão</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{taxaConversao}%</h3>
-            </div>
-            <div className="p-3 bg-purple-500/10 rounded-lg text-purple-400"><BarChart3 /></div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {ultimasConversas.map((c) => (
+              <div key={c.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-mono font-bold text-slate-500 dark:text-slate-400">+{c.cliente}</span>
+                  <span className={c.canal === "WEB" ? "text-indigo-500 dark:text-indigo-400 font-bold" : "text-emerald-500 dark:text-emerald-400 font-bold"}>{c.canal || "WHATSAPP"}</span>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-1 border-l-2 border-slate-300 dark:border-slate-600 pl-2">{c.ultimaMensagem}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna 1 & 2: O que o Robô está fazendo (Fila ao vivo) */}
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Ações e Conversas do Robô Ao Vivo
-            </h2>
-
-            <div className="space-y-3 max-h-150 overflow-y-auto pr-2">
-              {conversas.length === 0 ? (
-                <p className="text-slate-500 text-sm">Aguardando interações no WhatsApp...</p>
-              ) : (
-                conversas.map((c) => (
-                  <div key={c.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-300">📱 +{c.cliente}</span>
-                      <div className="flex gap-2">
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-md font-mono">
-                          🏷️ {c.tema}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${
-                          c.status === "Pedido Fechado" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"
-                        }`}>
-                          {c.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800 text-xs">
-                      <p className="text-slate-400"><strong className="text-slate-200">Cliente:</strong> {c.ultimaMensagem}</p>
-                      <p className="text-emerald-400/90 mt-1"><strong className="text-emerald-400">IA Bot:</strong> {c.respostaBot}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden transition-colors">
+          <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+            <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><ShoppingBag size={18} className="text-emerald-500"/> Pedidos Recentes</h2>
+            <Link href="/admin/pedidos" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors">
+              Ver Todos os Pedidos <ArrowRight size={14}/>
+            </Link>
           </div>
-
-          {/* Coluna 3: Auditoria de Temas Quentes */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-white">Temas Mais Conversados</h2>
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
-              {Object.keys(contagemTemas).length === 0 ? (
-                <p className="text-slate-500 text-sm">Nenhum dado de tema processado.</p>
-              ) : (
-                Object.entries(contagemTemas).map(([tema, qtd]) => {
-                  const percentual = ((qtd / conversas.length) * 100).toFixed(0);
-                  return (
-                    <div key={tema} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold">
-                        <span className="text-slate-300">{tema}</span>
-                        <span className="text-slate-400">{qtd} interações ({percentual}%)</span>
-                      </div>
-                      <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                        <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${percentual}%` }}></div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Balanço de Separação de Pedidos Pendentes */}
-            <h2 className="text-xl font-bold text-white pt-4">Últimos Pedidos para Separação</h2>
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 divide-y divide-slate-700 max-h-62.5 overflow-y-auto">
-              {pedidos.length === 0 ? (
-                <p className="text-slate-500 text-sm py-2">Nenhum pedido feito ainda.</p>
-              ) : (
-                pedidos.map((p) => (
-                  <div key={p.id} className="py-2 first:pt-0 last:pb-0 flex justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-slate-200">{p.itens}</p>
-                      <p className="text-slate-400 text-[10px]">Cliente: +{p.cliente}</p>
-                    </div>
-                    <span className="font-bold text-white">R$ {p.total.toFixed(2)}</span>
-                  </div>
-                ))
-              )}
-            </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {ultimosPedidos.map((p) => (
+              <div key={p.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex justify-between items-center transition-colors">
+                <div>
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-200 line-clamp-1">{p.itens}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 inline-block ${p.status.includes("Pendente") ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"}`}>
+                    {p.status}
+                  </span>
+                </div>
+                <div className="text-right font-black text-emerald-600 dark:text-emerald-400 text-sm whitespace-nowrap ml-4">
+                  R$ {p.total.toFixed(2)}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
